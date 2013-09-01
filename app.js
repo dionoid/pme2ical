@@ -8,7 +8,9 @@ var crypto = require('crypto');
 var zlib = require('zlib');
 
 //configuration vars
+//https://[yourdomain]/planningpme/webaccess/en/Web/Planning.aspx
 var urlPME = process.env.PME_URL_WEBACCESS;
+//https://[yourdomain]/planningpme/ajaxpro/WebAccessPlanning,App_Code.zmm34fne.ashx
 var urlGetData = process.env.PME_URL_GETDATA;
 var lookDaysBack = 4 * 7;
 var lookDaysAhead = 13 * 7;
