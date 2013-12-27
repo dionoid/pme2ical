@@ -1,30 +1,39 @@
 var http = require('http');
-var url = require("url");
+var url = require('url');
 var request = require('request');
-var cache = require('memory-cache');
+//var cache = require('memory-cache');
 var pme2ical = require('./pme2ical');
 var azure = require('azure');
 var crypto = require('crypto');
 var zlib = require('zlib');
 
-//configuration vars
-//https://[yourdomain]/planningpme/webaccess/en/Web/Planning.aspx
-var urlPME = process.env.PME_URL_WEBACCESS;
-//https://[yourdomain]/planningpme/ajaxpro/WebAccessPlanning,App_Code.zmm34fne.ashx
-var urlGetData = process.env.PME_URL_GETDATA;
+//parse arguments (used for local development)
+var arguments = {};
+for (var index = 0; index < process.argv.length; index++) {
+    var re = new RegExp('--([A-Za-z0-9_]+)=(.+)');
+    var matches = re.exec(process.argv[index]);
+    if(matches !== null) {
+        arguments[matches[1]] = matches[2];
+    }
+}
+
+/**********************/
+/* configuration vars */
+/**********************/
+var urlPME = process.env.PME_URL_WEBACCESS || arguments.PME_URL_WEBACCESS; //https://[yourdomain]/planningpme/webaccess/en/Web/Planning.aspx
+var urlGetData = process.env.PME_URL_GETDATA || arguments.PME_URL_GETDATA; //https://[yourdomain]/planningpme/ajaxpro/WebAccessPlanning,App_Code.zmm34fne.ashx
 var lookDaysBack = 4 * 7;
 var lookDaysAhead = 13 * 7;
-var sResourceHuman = process.env.PME_RESOURCE_ALLHUMAN || '45056';
-var sResourceToPlan = process.env.PME_RESOURCE_PERSONAL || '53248';
-var cacheTimeout = (process.env.PME2ICAL_CACHETIMEOUTMINUTES || 15) * 60 * 1000; //cache PME-results for 15 minutes
-var cyphersecret = process.env.PME2ICAL_CYPHERSECRET;
+var sResourceHuman = process.env.PME_RESOURCE_ALLHUMAN || arguments.PME_RESOURCE_ALLHUMAN || '45056';
+var sResourceToPlan = process.env.PME_RESOURCE_PERSONAL || arguments.PME_RESOURCE_PERSONAL || '53248';
+var cyphersecret = process.env.PME2ICAL_CYPHERSECRET || arguments.PME2ICAL_CYPHERSECRET;
 var authPMEUser = {
-	'user': process.env.PME_USERNAME,
-	'pass': process.env.PME_PASSWORD,
+	'user': process.env.PME_USERNAME || arguments.PME_USERNAME,
+	'pass': process.env.PME_PASSWORD || arguments.PME_PASSWORD,
 	'sendImmediately': true
 };
-var blobAccount = process.env.AZURE_STORAGE_ACCOUNT;
-var blobKey = process.env.AZURE_STORAGE_ACCESS_KEY;
+var blobAccount = process.env.AZURE_STORAGE_ACCOUNT || arguments.AZURE_STORAGE_ACCOUNT;
+var blobKey = process.env.AZURE_STORAGE_ACCESS_KEY || arguments.AZURE_STORAGE_ACCESS_KEY;
 
 
 http.createServer(function (httpRequest, httpResponse) {
@@ -32,7 +41,7 @@ http.createServer(function (httpRequest, httpResponse) {
     console.log("==> Requested url: " + httpRequest.url);
     
     //force https (only in production mode)
-    if (!(httpRequest.headers['x-forwarded-proto'] === 'https' || httpRequest.headers['x-arr-ssl'] || process.env.NODE_ENV === 'development')) {
+    if (!(httpRequest.headers['x-forwarded-proto'] === 'https' || httpRequest.headers['x-arr-ssl'] || process.env.NODE_ENV !== 'production')) {
         httpResponse.writeHead(200, { 'Content-Type': 'text/html' });
         httpResponse.end("Only http requests allowed.");
         return;
@@ -126,11 +135,6 @@ http.createServer(function (httpRequest, httpResponse) {
             });
         }
     }
-    else if (httpRequest.url.toLowerCase() === '/cc') {
-        cache.clear();
-        httpResponse.writeHead(200, { 'Content-Type': 'text/html' });
-        httpResponse.end("Cache is cleared...");
-    }
     else if (httpRequest.url.toLowerCase() === '/refresh') {
         var today = new Date().setHours(0, 0, 0, 0);
         var startDate_ms = today - (1000 * 60 * 60 * 24 * lookDaysBack);
@@ -139,12 +143,11 @@ http.createServer(function (httpRequest, httpResponse) {
         refreshPMEData(authPMEUser, startDate_ms, endDate_ms, sResourceHuman, function (error, pmeResults) {
             if (error || !pmeResults) return;
 
-            cache.put('pmeResults', pmeResults, cacheTimeout); //put in cache
             var pmeResultsString = JSON.stringify(pmeResults);
 
             zlib.deflate(pmeResultsString, function (err, buffer) {
                 if (!err) {
-                    var blobService = azure.createBlobService();
+                    var blobService = azure.createBlobService(blobAccount, blobKey);
                     blobService.createBlockBlobFromText('data', 'pme.json.zip.b64', buffer.toString('base64'), function (err, results) { });
 
                 }
@@ -161,12 +164,8 @@ http.createServer(function (httpRequest, httpResponse) {
 }).listen(process.env.PORT || 8080);
 
 function getPmeResults(callback) {
-    //first try cache
-    var pmeResults = cache.get('pmeResults');
-    if (pmeResults) return callback(null, pmeResults);
-
-    //then blob storage
-    azure.createBlobService().getBlobToText('data', 'pme.json.zip.b64', function (err, results) {
+    //get from blob storage
+    azure.createBlobService(blobAccount, blobKey).getBlobToText('data', 'pme.json.zip.b64', function (err, results) {
         if (err) return callback(err, null);
 
         //unzip pme data
@@ -174,7 +173,6 @@ function getPmeResults(callback) {
         zlib.unzip(buffer, function (err, buffer) {
             if (err) return callback(err, null);
             pmeResults = JSON.parse(buffer.toString());
-            if (pmeResults) cache.put('pmeResults', pmeResults, cacheTimeout); //put back in cache
             callback(null, pmeResults);
         });
     });
@@ -185,7 +183,7 @@ function return401(httpResponse)
     // No Authorization header was passed in so it's the first time the browser hit us
     // Sending a 401 will require authentication, we need to send the 'WWW-Authenticate' to tell them the sort of authentication to use
     // Basic auth is quite literally the easiest and least secure, it simply gives back  base64( username + ":" + password ) from the browser
-    httpResponse.writeHead(401, { 'WWW-Authenticate': 'Basic realm="MACAW"' });
+    httpResponse.writeHead(401, { 'WWW-Authenticate': 'Basic realm=""' });
     httpResponse.end('<html><body>Need some creds son</body></html>');
 }
 

@@ -8,9 +8,12 @@ lib-cov
 *.gz
 *.env
 *.c9save
+*.njsproj
+*.suo
 
 pids
 logs
 results
+node_modules
 
 npm-debug.log
