@@ -11,7 +11,6 @@
   "dependencies" : {
   	"azure": "0.7.6",
   	"icalendar": "0.6.3",
-  	"memory-cache": "0.0.5",
   	"request": "2.21.0"
   }
 }
