@@ -8,7 +8,6 @@ lib-cov
 *.gz
 *.env
 *.c9save
-*.njsproj
 *.suo
 
 pids
