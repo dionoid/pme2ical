@@ -7,33 +7,33 @@ var azure = require('azure');
 var crypto = require('crypto');
 var zlib = require('zlib');
 
-//parse arguments (used for local development)
-var arguments = {};
+//parse cli arguments (used for local development)
+var cli_arguments = {};
 for (var index = 0; index < process.argv.length; index++) {
     var re = new RegExp('--([A-Za-z0-9_]+)=(.+)');
     var matches = re.exec(process.argv[index]);
     if(matches !== null) {
-        arguments[matches[1]] = matches[2];
+        cli_arguments[matches[1]] = matches[2];
     }
 }
 
 /**********************/
 /* configuration vars */
 /**********************/
-var urlPME = process.env.PME_URL_WEBACCESS || arguments.PME_URL_WEBACCESS; //https://[yourdomain]/planningpme/webaccess/en/Web/Planning.aspx
-var urlGetData = process.env.PME_URL_GETDATA || arguments.PME_URL_GETDATA; //https://[yourdomain]/planningpme/ajaxpro/WebAccessPlanning,App_Code.zmm34fne.ashx
+var urlPME = process.env.PME_URL_WEBACCESS || cli_arguments.PME_URL_WEBACCESS; //https://[yourdomain]/planningpme/webaccess/en/Web/Planning.aspx
+var urlGetData = process.env.PME_URL_GETDATA || cli_arguments.PME_URL_GETDATA; //https://[yourdomain]/planningpme/ajaxpro/WebAccessPlanning,App_Code.zmm34fne.ashx
 var lookDaysBack = 4 * 7;
 var lookDaysAhead = 13 * 7;
-var sResourceHuman = process.env.PME_RESOURCE_ALLHUMAN || arguments.PME_RESOURCE_ALLHUMAN || '45056';
-var sResourceToPlan = process.env.PME_RESOURCE_PERSONAL || arguments.PME_RESOURCE_PERSONAL || '53248';
-var cyphersecret = process.env.PME2ICAL_CYPHERSECRET || arguments.PME2ICAL_CYPHERSECRET;
+var sResourceHuman = process.env.PME_RESOURCE_ALLHUMAN || cli_arguments.PME_RESOURCE_ALLHUMAN || '45056';
+var sResourceToPlan = process.env.PME_RESOURCE_PERSONAL || cli_arguments.PME_RESOURCE_PERSONAL || '53248';
+var cyphersecret = process.env.PME2ICAL_CYPHERSECRET || cli_arguments.PME2ICAL_CYPHERSECRET;
 var authPMEUser = {
-	'user': process.env.PME_USERNAME || arguments.PME_USERNAME,
-	'pass': process.env.PME_PASSWORD || arguments.PME_PASSWORD,
+	'user': process.env.PME_USERNAME || cli_arguments.PME_USERNAME,
+	'pass': process.env.PME_PASSWORD || cli_arguments.PME_PASSWORD,
 	'sendImmediately': true
 };
-var blobAccount = process.env.AZURE_STORAGE_ACCOUNT || arguments.AZURE_STORAGE_ACCOUNT;
-var blobKey = process.env.AZURE_STORAGE_ACCESS_KEY || arguments.AZURE_STORAGE_ACCESS_KEY;
+var blobAccount = process.env.AZURE_STORAGE_ACCOUNT || cli_arguments.AZURE_STORAGE_ACCOUNT;
+var blobKey = process.env.AZURE_STORAGE_ACCESS_KEY || cli_arguments.AZURE_STORAGE_ACCESS_KEY;
 
 
 http.createServer(function (httpRequest, httpResponse) {
@@ -46,11 +46,13 @@ http.createServer(function (httpRequest, httpResponse) {
         httpResponse.end("Only http requests allowed.");
         return;
     }
+    
+    var today = new Date().setHours(0, 0, 0, 0);
 
     if (httpRequest.url.toLowerCase().indexOf('/planningpme.ics?token=') === 0) {
 
-        var token = url.parse(httpRequest.url, true).query['token'];
-        var mode = url.parse(httpRequest.url, true).query['mode'] || 'event'; //event (full-day) or appointment
+        var token = url.parse(httpRequest.url, true).query.token;
+        var mode = url.parse(httpRequest.url, true).query.mode || 'event'; //event (full-day) or appointment
 
         var decipher = crypto.createDecipher('aes256', cyphersecret);
         var entityId = parseInt(decipher.update(token, 'hex', 'utf8') + decipher.final('utf8'), 10);
@@ -68,14 +70,13 @@ http.createServer(function (httpRequest, httpResponse) {
     }
     else if (httpRequest.url.toLowerCase().indexOf('/gettokenfor/') === 0) {
         var name = httpRequest.url.toLowerCase().split('/').slice(-1)[0];
-        var today = new Date().setHours(0, 0, 0, 0);
-
+        
         getPmeResults(function (error, pmeResults) {
             var found = false;
             if (!error) {
-                var yEntities = pmeResults['value'].YEntities;
+                var yEntities = pmeResults.value.YEntities;
                 for (var i = 0; i < yEntities.length; i++) {
-                    yEntity = yEntities[i];
+                    var yEntity = yEntities[i];
                     if (yEntity.N.replace(/ /g, "").toLowerCase() === name) {
                         var cipher = crypto.createCipher('aes256', cyphersecret);
                         var encrypted = cipher.update(yEntity.Id.toString(), 'utf8', 'hex') + cipher.final('hex');
@@ -94,23 +95,22 @@ http.createServer(function (httpRequest, httpResponse) {
     }
     else if (httpRequest.url.toLowerCase() === '/gettoken') {
 
-        var auth = httpRequest.headers['authorization'];
-        if (!auth) {
+        var authHeader = httpRequest.headers.authorization;
+        if (!authHeader) {
             return401(httpResponse);
         }
 
-        if (auth) {
-            var buf = new Buffer(auth.split(' ')[1], 'base64');
+        if (authHeader) {
+            var buf = new Buffer(authHeader.split(' ')[1], 'base64');
             var creds = buf.toString().split(':');
             var username = creds[0];
             var password = creds[1];
 
-            var today = new Date().setHours(0, 0, 0, 0);
             var auth = {
                 'user': username,
                 'pass': password,
                 'sendImmediately': true
-            }
+            };
             refreshPMEData(auth, today, today, sResourceToPlan, function (error, pmeResults) {
                 if (error) {
                     if (error == "401") return401(httpResponse);
@@ -136,7 +136,7 @@ http.createServer(function (httpRequest, httpResponse) {
         }
     }
     else if (httpRequest.url.toLowerCase() === '/refresh') {
-        var today = new Date().setHours(0, 0, 0, 0);
+
         var startDate_ms = today - (1000 * 60 * 60 * 24 * lookDaysBack);
         var endDate_ms = today + (1000 * 60 * 60 * 24 * lookDaysAhead);
 
@@ -172,7 +172,7 @@ function getPmeResults(callback) {
         var buffer = new Buffer(results, 'base64');
         zlib.unzip(buffer, function (err, buffer) {
             if (err) return callback(err, null);
-            pmeResults = JSON.parse(buffer.toString());
+            var pmeResults = JSON.parse(buffer.toString());
             callback(null, pmeResults);
         });
     });
@@ -216,7 +216,7 @@ function refreshPMEData(auth, startDate_ms, endDate_ms, sResource, callback) {
             console.timeEnd("GetTimezoneOffset");
             if (checkError(error, response, callback)) return;
 
-            var tzo = -body['value'].TZO;
+            var tzo = -body.value.TZO;
 
             var getDataParams = {
                 "yview": 1,
