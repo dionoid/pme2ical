@@ -45,7 +45,7 @@ http.createServer(function (httpRequest, httpResponse) {
 
     if (httpRequest.url.toLowerCase().indexOf('/planningpme.ics?token=') === 0) {
 
-        var token = url.parse(httpRequest.url, true).query.token;
+        var token = url.parse(httpRequest.url, true).query.token.substring(0,32); //max 32 chars
         var mode = url.parse(httpRequest.url, true).query.mode || 'event'; //event (full-day) or appointment
 
         var decipher = crypto.createDecipher('aes256', cyphersecret);
