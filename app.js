@@ -44,7 +44,7 @@ http.createServer(function (httpRequest, httpResponse) {
     //force https (only in production mode)
     if (!(httpRequest.headers['x-forwarded-proto'] === 'https' || httpRequest.headers['x-arr-ssl'] || process.env.NODE_ENV !== 'production')) {
         httpResponse.writeHead(200, { 'Content-Type': 'text/html' });
-        httpResponse.end("Only http requests allowed.");
+        httpResponse.end("Only https requests allowed.");
         return;
     }
     
