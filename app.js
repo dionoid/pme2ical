@@ -41,13 +41,6 @@ http.createServer(function (httpRequest, httpResponse) {
 
     console.log("==> Requested url: " + httpRequest.url);
     
-    //force https (only in production mode)
-    if (!(httpRequest.headers['x-forwarded-proto'] === 'https' || httpRequest.headers['x-arr-ssl'] || process.env.NODE_ENV !== 'production')) {
-        httpResponse.writeHead(200, { 'Content-Type': 'text/html' });
-        httpResponse.end("Only https requests allowed.");
-        return;
-    }
-    
     var today = new Date().setHours(0, 0, 0, 0);
 
     if (httpRequest.url.toLowerCase().indexOf('/planningpme.ics?token=') === 0) {
@@ -56,7 +49,15 @@ http.createServer(function (httpRequest, httpResponse) {
         var mode = url.parse(httpRequest.url, true).query.mode || 'event'; //event (full-day) or appointment
 
         var decipher = crypto.createDecipher('aes256', cyphersecret);
-        var entityId = parseInt(decipher.update(token, 'hex', 'utf8') + decipher.final('utf8'), 10);
+        try {
+            var entityId = parseInt(decipher.update(token, 'hex', 'utf8') + decipher.final('utf8'), 10);
+        }
+        catch (e) {
+            console.warn("Could not decipher " + token);
+            httpResponse.writeHead(400, { 'Content-Type': 'text/html' });
+            httpResponse.end("Could not decipher your token. Please check format and length.");
+            return;
+        }
         console.log('Deciphered entityId = ' + entityId);
 
         getPmeResults(function (err, pmeResults) {
@@ -95,6 +96,13 @@ http.createServer(function (httpRequest, httpResponse) {
         });
     }
     else if (httpRequest.url.toLowerCase() === '/gettoken') {
+        
+            //force https (only in production mode)
+    if (!(httpRequest.headers['x-forwarded-proto'] === 'https' || httpRequest.headers['x-arr-ssl'] || process.env.NODE_ENV !== 'production')) {
+        httpResponse.writeHead(200, { 'Content-Type': 'text/html' });
+        httpResponse.end("Only https requests allowed.");
+        return;
+    }
 
         var authHeader = httpRequest.headers.authorization;
         if (!authHeader) {
