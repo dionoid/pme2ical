@@ -20,8 +20,9 @@ for (var index = 0; index < process.argv.length; index++) {
 /**********************/
 /* configuration vars */
 /**********************/
-var urlPME = process.env.PME_URL_WEBACCESS || cli_arguments.PME_URL_WEBACCESS; //https://[yourdomain]/planningpme/webaccess/en/Web/Planning.aspx
-var urlGetData = process.env.PME_URL_GETDATA || cli_arguments.PME_URL_GETDATA; //https://[yourdomain]/planningpme/ajaxpro/WebAccessPlanning,App_Code.zmm34fne.ashx
+var pmeDomain = process.env.PME_DOMAIN || cli_arguments.PME_DOMAIN;
+var urlPME = 'https://' + pmeDomain + '/planningpme/webaccess/en/Web/Planning.aspx';
+var urlGetData = 'https://' + pmeDomain + '/planningpme/ajaxpro/WebAccessPlanning,App_Code.zmm34fne.ashx';
 var lookDaysBack = 4 * 7;
 var lookDaysAhead = 13 * 7;
 var sResourceHuman = process.env.PME_RESOURCE_ALLHUMAN || cli_arguments.PME_RESOURCE_ALLHUMAN || '45056';
