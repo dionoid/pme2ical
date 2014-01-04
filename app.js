@@ -6,35 +6,29 @@ var pme2ical = require('./pme2ical');
 var azure = require('azure');
 var crypto = require('crypto');
 var zlib = require('zlib');
+var env = require('node-env-file');
 
-//parse cli arguments (used for local development)
-var cli_arguments = {};
-for (var index = 0; index < process.argv.length; index++) {
-    var re = new RegExp('--([A-Za-z0-9_]+)=(.+)');
-    var matches = re.exec(process.argv[index]);
-    if(matches !== null) {
-        cli_arguments[matches[1]] = matches[2];
-    }
-}
+//load missing environment vars
+env(__dirname + '/.env');
 
 /**********************/
 /* configuration vars */
 /**********************/
-var pmeDomain = process.env.PME_DOMAIN || cli_arguments.PME_DOMAIN;
+var pmeDomain = process.env.PME_DOMAIN;
 var urlPME = 'https://' + pmeDomain + '/planningpme/webaccess/en/Web/Planning.aspx';
 var urlGetData = 'https://' + pmeDomain + '/planningpme/ajaxpro/WebAccessPlanning,App_Code.zmm34fne.ashx';
 var lookDaysBack = 4 * 7;
 var lookDaysAhead = 13 * 7;
-var sResourceHuman = process.env.PME_RESOURCE_ALLHUMAN || cli_arguments.PME_RESOURCE_ALLHUMAN || '45056';
-var sResourceToPlan = process.env.PME_RESOURCE_PERSONAL || cli_arguments.PME_RESOURCE_PERSONAL || '53248';
-var cyphersecret = process.env.PME2ICAL_CYPHERSECRET || cli_arguments.PME2ICAL_CYPHERSECRET;
+var sResourceHuman = process.env.PME_RESOURCE_ALLHUMAN || '45056';
+var sResourceToPlan = process.env.PME_RESOURCE_PERSONAL || '53248';
+var cyphersecret = process.env.PME2ICAL_CYPHERSECRET;
 var authPMEUser = {
-	'user': process.env.PME_USERNAME || cli_arguments.PME_USERNAME,
-	'pass': process.env.PME_PASSWORD || cli_arguments.PME_PASSWORD,
+	'user': process.env.PME_USERNAME,
+	'pass': process.env.PME_PASSWORD,
 	'sendImmediately': true
 };
-var blobAccount = process.env.AZURE_STORAGE_ACCOUNT || cli_arguments.AZURE_STORAGE_ACCOUNT;
-var blobKey = process.env.AZURE_STORAGE_ACCESS_KEY || cli_arguments.AZURE_STORAGE_ACCESS_KEY;
+var blobAccount = process.env.AZURE_STORAGE_ACCOUNT;
+var blobKey = process.env.AZURE_STORAGE_ACCESS_KEY + '==='.substr(0, (4 - process.env.AZURE_STORAGE_ACCESS_KEY.length % 4) % 4);
 
 
 http.createServer(function (httpRequest, httpResponse) {

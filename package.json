@@ -8,9 +8,10 @@
   "scripts": {
     "start": "node app.js"
   },
-  "dependencies" : {
-  	"azure": "0.7.6",
-  	"icalendar": "0.6.3",
-  	"request": "2.21.0"
+  "dependencies": {
+    "azure": "0.7.6",
+    "icalendar": "0.6.3",
+    "request": "2.21.0",
+    "node-env-file": "~0.1.0"
   }
 }
