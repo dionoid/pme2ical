@@ -35,7 +35,7 @@ app.listen(process.env.PORT || 8080);
 
 function *getToken() {
 
-    if (!this.header.authorization) return yield write401();
+    if (!this.header.authorization) return write401(this);
 
     var buf = new Buffer(this.header.authorization.split(' ')[1], 'base64');
     var creds = buf.toString().split(':');
@@ -50,11 +50,11 @@ function *getToken() {
     try {
         var pmeData = yield scrapePmeData(auth, today, today, sResourceToPlan);
     } catch(e) {
-        if (e.statusCode == 401) return yield write401();
+        if (e.statusCode == 401) return write401(this);
     }
 
     if (pmeData.value && pmeData.value.YEntities && pmeData.value.YEntities.length === 1) {
-        return yield writeTokenMessage(this, pmeData.value.YEntities[0].Id.toString(), process.env.PME2ICAL_CYPHERSECRET);
+        return writeTokenMessage(this, pmeData.value.YEntities[0].Id.toString(), process.env.PME2ICAL_CYPHERSECRET);
     }
     else {
         this.body = 'Error: could not find a resource in PlanningPME connected to your login.<br/> \
@@ -89,7 +89,7 @@ function *getTokenForName() {
     for (var i = 0; i < pmeData.value.YEntities.length; i++) {
         var yEntity = pmeData.value.YEntities[i];
         if (yEntity.N.replace(/ /g, '').toLowerCase() === name) {
-            return yield writeTokenMessage(this, yEntity.Id.toString(), this.query.secret);
+            return writeTokenMessage(this, yEntity.Id.toString(), this.query.secret);
         }
     }
 
@@ -173,7 +173,7 @@ function *scrapePmeData(auth, startDate_ms, endDate_ms, sResource) {
     return pmeData;
 }
 
-function *writeTokenMessage(koaCtx, yEntityId, secret) {
+function writeTokenMessage(koaCtx, yEntityId, secret) {
     var cipher = crypto.createCipher('aes256', secret);
     var encrToken = cipher.update(yEntityId, 'utf8', 'hex') + cipher.final('hex');
     koaCtx.body = 'Your personal token was generated.<br/> \
@@ -190,7 +190,7 @@ function *readPmeDataFromStorage() {
     return JSON.parse(unzipBuffer.toString());
 }
 
-function *write401() {
-    this.status = 401;
-    this.set('WWW-Authenticate', 'Basic realm=""');
+function write401(koaCtx) {
+    koaCtx.status = 401;
+    koaCtx.set('WWW-Authenticate', 'Basic realm=""');
 }
