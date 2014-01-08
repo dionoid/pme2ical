@@ -50,7 +50,7 @@ function *getToken() {
     try {
         var pmeData = yield scrapePmeData(auth, today, today, sResourceToPlan);
     } catch(e) {
-        if (e.statusCode == 401) return write401(this);
+        if (e.status == 401) return write401(this);
     }
 
     if (pmeData.value && pmeData.value.YEntities && pmeData.value.YEntities.length === 1) {
@@ -70,7 +70,7 @@ function *getPlanningUsingToken() {
 
         var decipher = crypto.createDecipher('aes256', process.env.PME2ICAL_CYPHERSECRET);
         var entityId = parseInt(decipher.update(token, 'hex', 'utf8') + decipher.final('utf8'), 10);
-        console.log('Deciphered entityId = ' + entityId);
+        //console.log('Deciphered entityId = ' + entityId);
 
         //get pme data from azure blob storage
         var pmeData = yield readPmeDataFromStorage();
@@ -129,7 +129,9 @@ function *scrapePmeData(auth, startDate_ms, endDate_ms, sResource) {
     //step 1: open basic planning aspx page to get session-cookie
     var resultAuth = yield request.get({"url": urlPME, "auth": auth, "jar": j});
     if (resultAuth[0].statusCode !== 200) {
-        throw resultAuth[0];
+        var err = new Error('error calling ' + urlPME);
+        err.status = resultAuth[0].statusCode;
+        throw err;
     }
 
     //step 2: call the "GetParameter" method get app-settings, which contain current timezone offset.
@@ -173,11 +175,11 @@ function *scrapePmeData(auth, startDate_ms, endDate_ms, sResource) {
     return pmeData;
 }
 
-function writeTokenMessage(koaCtx, yEntityId, secret) {
+function writeTokenMessage(ctx, yEntityId, secret) {
     var cipher = crypto.createCipher('aes256', secret);
     var encrToken = cipher.update(yEntityId, 'utf8', 'hex') + cipher.final('hex');
-    koaCtx.body = 'Your personal token was generated. \n' +
-        'Use this url in Outlook as new Internet Calendar Subscription -> webcal://' + koaCtx.host + '/PlanningPME.ics?token=' + encrToken;
+    ctx.body = 'Your personal token was generated. \n' +
+        'Use this url in Outlook as new Internet Calendar Subscription -> webcal://' + ctx.host + '/PlanningPME.ics?token=' + encrToken;
 }
 
 //gets Pme data from azure blob storage. TODO: maybe put in memory cache
@@ -190,7 +192,7 @@ function *readPmeDataFromStorage() {
     return JSON.parse(unzipBuffer.toString());
 }
 
-function write401(koaCtx) {
-    koaCtx.status = 401;
-    koaCtx.set('WWW-Authenticate', 'Basic realm="' + process.env.PME_DOMAIN + '"');
+function write401(ctx) {
+    ctx.status = 401;
+    ctx.set('WWW-Authenticate', 'Basic realm="' + process.env.PME_DOMAIN + '"');
 }
