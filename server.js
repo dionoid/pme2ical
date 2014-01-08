@@ -57,8 +57,8 @@ function *getToken() {
         return writeTokenMessage(this, pmeData.value.YEntities[0].Id.toString(), process.env.PME2ICAL_CYPHERSECRET);
     }
     else {
-        this.body = 'Error: could not find a resource in PlanningPME connected to your login.<br/> \
-            Ask ProjectBureau to add you as default resource in PlanningPME.';
+        this.body = 'Error: could not find a resource in PlanningPME connected to your login. \n' +
+            'Ask ProjectBureau to add you as default resource in PlanningPME.';
     }
 }
 
@@ -176,8 +176,8 @@ function *scrapePmeData(auth, startDate_ms, endDate_ms, sResource) {
 function writeTokenMessage(koaCtx, yEntityId, secret) {
     var cipher = crypto.createCipher('aes256', secret);
     var encrToken = cipher.update(yEntityId, 'utf8', 'hex') + cipher.final('hex');
-    koaCtx.body = 'Your personal token was generated.<br/> \
-        Use this url in Outlook as new Internet Calendar Subscription -> webcal://' + koaCtx.host + '/PlanningPME.ics?token=' + encrToken;
+    koaCtx.body = 'Your personal token was generated. \n' +
+        'Use this url in Outlook as new Internet Calendar Subscription -> webcal://' + koaCtx.host + '/PlanningPME.ics?token=' + encrToken;
 }
 
 //gets Pme data from azure blob storage. TODO: maybe put in memory cache
@@ -192,5 +192,5 @@ function *readPmeDataFromStorage() {
 
 function write401(koaCtx) {
     koaCtx.status = 401;
-    koaCtx.set('WWW-Authenticate', 'Basic realm=""');
+    koaCtx.set('WWW-Authenticate', 'Basic realm="' + process.env.PME_DOMAIN + '"');
 }
