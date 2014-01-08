@@ -16,7 +16,7 @@
     <NodeExeArguments>--harmony</NodeExeArguments>
     <ScriptArguments>
     </ScriptArguments>
-    <NodejsPort />
+    <NodejsPort>8080</NodejsPort>
     <StartWebBrowser>True</StartWebBrowser>
     <LaunchUrl />
   </PropertyGroup>

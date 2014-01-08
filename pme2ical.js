@@ -1,4 +1,4 @@
-var icalendar = require('icalendar'); 
+var icalendar = require('icalendar');
 
 //Information on icalendar specs:
 //  http://en.wikipedia.org/wiki/ICalendar
@@ -6,18 +6,7 @@ var icalendar = require('icalendar');
 //  http://msdn.microsoft.com/en-us/library/gg672059(v=exchg.80).aspx
 //  http://www.kanzaki.com/docs/ical/
 
-// a and b are javascript Date objects
-function dateDiffInHours(date1, date2) {
-  return Math.floor(Math.abs(date1.getTime() - date2.getTime()) / (1000 * 60 * 30)) / 2;
-}
-
-function vEvent_setFullDay(vEvent, fullDay) {
-    vEvent.addProperty('DTSTART;VALUE=DATE', fullDay.getUTCFullYear() + ('0' + (fullDay.getUTCMonth()+1)).slice(-2) + ('0' + fullDay.getUTCDate()).slice(-2));
-    var eod = new Date(fullDay.getFullYear(), fullDay.getMonth(), fullDay.getDate()+1);
-    vEvent.addProperty('DTEND;VALUE=DATE', eod.getUTCFullYear() + ('0' + (eod.getUTCMonth()+1)).slice(-2) + ('0' + eod.getUTCDate()).slice(-2));
-}
-
-function getICalendarFeed(pmeResults, yEntityId, mode) {
+module.exports = function getICalendarFeed(pmeResults, yEntityId, mode) {
 	if (!pmeResults || !yEntityId || !pmeResults.value || !pmeResults.TZO) return;
 
 	var tzOffset = pmeResults.TZO; //timezone offset (Netherlands)
@@ -80,4 +69,14 @@ function getICalendarFeed(pmeResults, yEntityId, mode) {
 	}
 	return ical.toString();
 }
-exports.getICalendarFeed = getICalendarFeed;
+
+//calculate timespan in hours between two dates
+function dateDiffInHours(date1, date2) {
+  return Math.floor(Math.abs(date1.getTime() - date2.getTime()) / (1000 * 60 * 30)) / 2;
+}
+
+function vEvent_setFullDay(vEvent, fullDay) {
+    vEvent.addProperty('DTSTART;VALUE=DATE', fullDay.getUTCFullYear() + ('0' + (fullDay.getUTCMonth()+1)).slice(-2) + ('0' + fullDay.getUTCDate()).slice(-2));
+    var eod = new Date(fullDay.getFullYear(), fullDay.getMonth(), fullDay.getDate()+1);
+    vEvent.addProperty('DTEND;VALUE=DATE', eod.getUTCFullYear() + ('0' + (eod.getUTCMonth()+1)).slice(-2) + ('0' + eod.getUTCDate()).slice(-2));
+}
