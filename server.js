@@ -1,16 +1,12 @@
 ﻿var koa = require('koa')
 var router = require('koa-router');
+var thunkify = require('thunkify');
 var azure = require('azure');
 var env = require('node-env-file');
-var thunkify = require('thunkify');
 var crypto = require('crypto');
 var pme2ical = require('./pme2ical');
-var request = require('request');
-request.post = thunkify(request.post);
-request.get = thunkify(request.get);
-var zlib = require('zlib');
-zlib.unzip = thunkify(zlib.unzip);
-zlib.deflate = thunkify(zlib.deflate);
+var request = require('koa-request');
+var zlib = require('koa-zlib');
 
 //load missing environment vars
 env(__dirname + '/.env');
@@ -37,6 +33,7 @@ function *getToken() {
 
     if (!this.header.authorization) return write401(this);
 
+    //read credentials
     var buf = new Buffer(this.header.authorization.split(' ')[1], 'base64');
     var creds = buf.toString().split(':');
     var auth = {
@@ -128,9 +125,9 @@ function *scrapePmeData(auth, startDate_ms, endDate_ms, sResource) {
     
     //step 1: open basic planning aspx page to get session-cookie
     var resultAuth = yield request.get({"url": urlPME, "auth": auth, "jar": j});
-    if (resultAuth[0].statusCode !== 200) {
+    if (resultAuth.statusCode !== 200) {
         var err = new Error('error calling ' + urlPME);
-        err.status = resultAuth[0].statusCode;
+        err.status = resultAuth.statusCode;
         throw err;
     }
 
@@ -144,7 +141,7 @@ function *scrapePmeData(auth, startDate_ms, endDate_ms, sResource) {
             "body": '{ "dt": "/Date(' + new Date().setHours(0, 0, 0, 0) + ')/" }'
         });
     //get time-zone-offset from JSON result
-    var tzo = -resultGetParameter[1].value.TZO;
+    var tzo = -resultGetParameter.body.value.TZO;
 
     //step 3: get all PME data from the specified resource-view id (e.g. "all humans" view)
     //build up request parameters
@@ -169,7 +166,7 @@ function *scrapePmeData(auth, startDate_ms, endDate_ms, sResource) {
             "jar": j,
             "body": getDataParams
         });
-    var pmeData = resultGetDatas[1];
+    var pmeData = resultGetDatas.body;
     pmeData.TZO = tzo;
 
     return pmeData;

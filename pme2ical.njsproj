@@ -28,7 +28,6 @@
     <Content Include="iisnode.yml" />
     <Content Include="package.json" />
     <Content Include="README.md" />
-    <Compile Include="app.js" />
     <Compile Include="pme2ical.js" />
     <Content Include=".git\ms-persist.xml" />
     <Content Include="Web.config" />
