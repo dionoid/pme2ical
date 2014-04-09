@@ -14,5 +14,10 @@ pids
 logs
 results
 node_modules
+obj
+
+tags
+.zedstate
+.gitattributes
 
 npm-debug.log

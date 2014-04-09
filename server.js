@@ -1,4 +1,4 @@
-﻿var koa = require('koa')
+var koa = require('koa');
 var router = require('koa-router');
 var thunkify = require('thunkify');
 var azure = require('azure');
@@ -44,8 +44,9 @@ function *getToken() {
 
     var today = new Date().setHours(0, 0, 0, 0);
     var sResourceToPlan = process.env.PME_RESOURCE_PERSONAL || '53248';
+    var pmeData;
     try {
-        var pmeData = yield scrapePmeData(auth, today, today, sResourceToPlan);
+        pmeData = yield scrapePmeData(auth, today, today, sResourceToPlan);
     } catch(e) {
         if (e.status == 401) return write401(this);
     }
@@ -92,7 +93,7 @@ function *getTokenForName() {
 
     //name not found
     this.body = 'Resource "' + name + '" not found in PlanningPME.';
-};
+}
 
 function *refreshPMEData() {
     var today = new Date().setHours(0, 0, 0, 0);
@@ -104,9 +105,9 @@ function *refreshPMEData() {
 
     //predefined authenticated domain user
     var authPMEUser = {
-	    'user': process.env.PME_USERNAME,
-	    'pass': process.env.PME_PASSWORD,
-	    'sendImmediately': true
+        'user': process.env.PME_USERNAME,
+        'pass': process.env.PME_PASSWORD,
+        'sendImmediately': true
     };
 
     var pmeData = yield scrapePmeData(authPMEUser, startDate_ms, endDate_ms, sResourceHuman);

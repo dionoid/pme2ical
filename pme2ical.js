@@ -68,7 +68,7 @@ module.exports = function getICalendarFeed(pmeResults, yEntityId, mode) {
 		}
 	}
 	return ical.toString();
-}
+};
 
 //calculate timespan in hours between two dates
 function dateDiffInHours(date1, date2) {
