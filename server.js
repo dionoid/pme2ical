@@ -20,6 +20,7 @@ blobService.createBlockBlobFromText = thunkify(blobService.createBlockBlobFromTe
 
 //init koa app
 var app = koa();
+app.proxy = true;
 app.use(router(app));
 
 //set up routes
@@ -30,9 +31,13 @@ app.get('/refresh', refreshPMEData);
 app.listen(process.env.PORT || 8080);
 
 function *getToken() {
-
+    
+    //gettoken need to be called using https (except in development environment)
+    if (process.env.NODE_ENV !== 'development' && !this.secure) return this.redirect('https://' + this.host + this.url);
+    
+    //gettoken requires basic authentication
     if (!this.header.authorization) return write401(this);
-
+   
     //read credentials
     var buf = new Buffer(this.header.authorization.split(' ')[1], 'base64');
     var creds = buf.toString().split(':');
