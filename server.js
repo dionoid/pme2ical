@@ -115,7 +115,7 @@ function *refreshPMEData() {
     var buffer = yield zlib.deflate(JSON.stringify(pmeData));
     yield blobService.createBlockBlobFromText('data', 'pmedata.json.zip.b64', buffer.toString('base64'));
 
-    this.body = 'PME data is refreshed!';
+    this.body = 'PME data is refreshed.';
 }
 
 function *scrapePmeData(auth, startDate_ms, endDate_ms, sResource) {
