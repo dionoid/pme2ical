@@ -33,7 +33,7 @@ app.listen(process.env.PORT || 8080);
 function *getToken() {
     
     //gettoken need to be called using https (except in development environment)
-    if (process.env.NODE_ENV !== 'development' && !this.secure) return this.redirect('https://' + this.host + this.url);
+    if (process.env.NODE_ENV !== 'development' && !(this.secure || this.header['x-arr-ssl'])) return this.redirect('https://' + this.host + this.url);
     
     //gettoken requires basic authentication
     if (!this.header.authorization) return write401(this);
