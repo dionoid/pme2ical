@@ -8,8 +8,8 @@ var pme2ical = require('./pme2ical');
 var request = require('koa-request');
 var zlib = require('koa-zlib');
 
-//load missing environment vars
-env(__dirname + '/.env');
+//load missing environment vars (don't raise exception if file doesn't exist)
+env(__dirname + '/.env', { 'raise': false });
 //fix padding of access key
 process.env.AZURE_STORAGE_ACCESS_KEY += '==='.substr(0, (4 - process.env.AZURE_STORAGE_ACCESS_KEY.length % 4) % 4);
 
