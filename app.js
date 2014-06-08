@@ -49,8 +49,9 @@ http.createServer(function (httpRequest, httpResponse) {
         var mode = url.parse(httpRequest.url, true).query.mode || 'event'; //event (full-day) or appointment
 
         var decipher = crypto.createDecipher('aes256', cyphersecret);
+        var entityId = null;
         try {
-            var entityId = parseInt(decipher.update(token, 'hex', 'utf8') + decipher.final('utf8'), 10);
+            entityId = parseInt(decipher.update(token, 'hex', 'utf8') + decipher.final('utf8'), 10);
         }
         catch (e) {
             console.warn("Could not decipher " + token);
@@ -157,8 +158,7 @@ http.createServer(function (httpRequest, httpResponse) {
             zlib.deflate(pmeResultsString, function (err, buffer) {
                 if (!err) {
                     var blobService = azure.createBlobService(blobAccount, blobKey);
-                    blobService.createBlockBlobFromText('data', 'pme.json.zip.b64', buffer.toString('base64'), function (err, results) { });
-
+                    blobService.createBlockBlobFromText('data', 'pme.json.zip.b64', buffer.toString('base64'), function () { });
                 }
             });
         });
