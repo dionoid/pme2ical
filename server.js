@@ -25,19 +25,20 @@ app.use(router(app));
 
 //set up routes
 app.get('/gettoken', getToken);
-app.get('/planningpme.ics', getPlanningUsingToken); //TODO: token
+app.get('/planningpme.ics', getPlanningUsingToken);
 app.get('/gettokenfor/:name', getTokenForName);
 app.get('/refresh', refreshPMEData);
 app.listen(process.env.PORT || 8080);
 
 function *getToken() {
-    
+
     //gettoken need to be called using https (except in development environment)
-    if (process.env.NODE_ENV !== 'development' && !(this.secure || this.header['x-arr-ssl'])) return this.redirect('https://' + this.host + this.url);
-    
+    if (process.env.NODE_ENV !== 'development' && !(this.secure || this.header['x-arr-ssl']))
+      return this.redirect('https://' + this.host + this.url);
+
     //gettoken requires basic authentication
     if (!this.header.authorization) return write401(this);
-   
+
     //read credentials
     var buf = new Buffer(this.header.authorization.split(' ')[1], 'base64');
     var creds = buf.toString().split(':');
@@ -67,7 +68,7 @@ function *getToken() {
 
 function *getPlanningUsingToken() {
     if (this.query.token) {
-        
+
         var token = this.query.token.match(/[a-f0-9]+/)[0]; //ignore non-hex chars at end of token
         var mode = this.query.mode || 'event'; //mode (full-day) event or appointment
 
@@ -102,7 +103,7 @@ function *getTokenForName() {
 
 function *refreshPMEData() {
     var today = new Date().setHours(0, 0, 0, 0);
-    var lookBackDays = 4 * 7;
+    var lookBackDays = 6 * 7;
     var lookAheadDays = 13 * 7;
     var startDate_ms = today - (1000 * 60 * 60 * 24 * lookBackDays);
     var endDate_ms = today + (1000 * 60 * 60 * 24 * lookAheadDays);
@@ -128,7 +129,7 @@ function *scrapePmeData(auth, startDate_ms, endDate_ms, sResource) {
     var urlPME = 'https://' + pmeDomain + '/planningpme/webaccess/en/Web/Planning.aspx';
     var urlGetData = 'https://' + pmeDomain + '/planningpme/ajaxpro/WebAccessPlanning,App_Code.zmm34fne.ashx';
     var j = request.jar(); //cookie jar to hold session information
-    
+
     //step 1: open basic planning aspx page to get session-cookie
     var resultAuth = yield request.get({"url": urlPME, "auth": auth, "jar": j});
     if (resultAuth.statusCode !== 200) {
